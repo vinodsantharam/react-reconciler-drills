@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning React from the inside: custom renderers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FBFCFD;
+    --ink: #1B2433;
+    --muted: #5A6577;
+    --rule: #DDE3EA;
+    --tint: #F1F5F9;
+    --host: #0E6E8A;
+    --host-soft: #E3F2F7;
+    --core: #5B43C7;
+    --core-soft: #EEEBFB;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #12161D;
+      --ink: #E6EAF0;
+      --muted: #9AA5B5;
+      --rule: #2A323E;
+      --tint: #1A202A;
+      --host: #5CC8E6;
+      --host-soft: #13303A;
+      --core: #A592F5;
+      --core-soft: #261F42;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 17px/1.65 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--host); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--host); outline-offset: 3px; border-radius: 2px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--tint); padding: 0.1em 0.35em; border-radius: 4px; }
+
+  .layout {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 64px;
+  }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    padding-top: 96px;
+    font-size: 14px;
+  }
+  nav.toc p { margin: 0 0 10px; color: var(--muted); }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); }
+  nav.toc a { display: block; padding: 5px 0 5px 14px; color: var(--muted); text-decoration: none; }
+  nav.toc a:hover { color: var(--ink); }
+  main { max-width: 68ch; padding: 88px 0 120px; }
+
+  header h1 {
+    font-size: clamp(2.1rem, 4.5vw, 3rem);
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    margin: 0 0 20px;
+  }
+  .lede { font-size: 1.2rem; color: var(--muted); margin: 0 0 40px; max-width: 58ch; }
+
+  /* Signature element: the layer stack */
+  .stack { margin: 0 0 24px; display: grid; gap: 0; }
+  .layer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 1px solid var(--rule);
+    border-bottom-width: 0;
+  }
+  .layer:first-child { border-radius: 10px 10px 0 0; }
+  .layer:last-child { border-bottom-width: 1px; border-radius: 0 0 10px 10px; }
+  .layer strong { font-weight: 600; }
+  .layer span { color: var(--muted); font-size: 0.92rem; }
+  .layer.core { background: var(--core-soft); border-color: color-mix(in srgb, var(--core) 35%, var(--rule)); }
+  .layer.core strong { color: var(--core); font-family: var(--mono); font-weight: 500; }
+  .layer.you {
+    background: var(--host-soft);
+    border: 2px solid var(--host);
+    border-bottom-width: 2px;
+    position: relative;
+    z-index: 1;
+    margin-bottom: -1px;
+  }
+  .layer.you strong { color: var(--host); }
+  .layer.you + .layer { border-top-width: 0; }
+  .stack-caption { font-size: 0.95rem; color: var(--muted); margin: 0 0 8px; }
+
+  section { margin-top: 88px; scroll-margin-top: 32px; }
+  h2 { font-size: 1.65rem; letter-spacing: -0.015em; font-weight: 600; margin: 0 0 18px; line-height: 1.25; }
+  h3 { font-size: 1.08rem; font-weight: 600; margin: 40px 0 10px; }
+  p { margin: 0 0 18px; }
+
+  /* Roadmap: a real sequence, so numbered */
+  ol.roadmap { list-style: none; counter-reset: step; margin: 32px 0 0; padding: 0; }
+  ol.roadmap > li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 34px 60px;
+  }
+  ol.roadmap > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 0;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font: 500 15px/1 var(--mono);
+    color: var(--host);
+    border: 1.5px solid var(--host);
+    background: var(--paper);
+  }
+  ol.roadmap > li::after {
+    content: "";
+    position: absolute;
+    left: 17.5px; top: 40px; bottom: 4px;
+    width: 1px;
+    background: var(--rule);
+  }
+  ol.roadmap > li:last-child::after { display: none; }
+  ol.roadmap > li:last-child::before { background: var(--host); color: var(--paper); }
+  .roadmap h3 { margin: 4px 0 6px; font-size: 1.12rem; }
+  .roadmap p { margin: 0 0 10px; }
+  .concepts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .concepts li {
+    font-size: 0.82rem;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--tint);
+    color: var(--muted);
+    border: 1px solid var(--rule);
+  }
+
+  /* Practices */
+  .practice { border-top: 1px solid var(--rule); padding-top: 22px; margin-top: 22px; }
+  .practice:first-of-type { border-top: 0; padding-top: 0; }
+  .practice h3 { margin-top: 0; }
+  .questions { margin: 8px 0 0; padding-left: 1.2em; }
+  .questions li { margin-bottom: 8px; }
+
+  /* Sources */
+  .group { margin-top: 36px; }
+  .group > p { color: var(--muted); font-size: 0.95rem; }
+  dl.sources { margin: 0; }
+  dl.sources dt { font-weight: 500; margin-top: 18px; }
+  dl.sources dd { margin: 4px 0 0; color: var(--muted); font-size: 0.97rem; }
+
+  .note {
+    margin-top: 28px;
+    padding: 16px 20px;
+    border-left: 3px solid var(--core);
+    background: var(--core-soft);
+    font-size: 0.97rem;
+  }
+  .note p:last-child { margin-bottom: 0; }
+
+  footer { margin-top: 96px; padding-top: 24px; border-top: 1px solid var(--rule); font-size: 0.9rem; color: var(--muted); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; gap: 0; }
+    nav.toc { display: none; }
+    main { padding-top: 56px; }
+    body { font-size: 16px; }
+    .layer { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <p>On this page</p>
+    <ol>
+      <li><a href="#why">Why build a renderer</a></li>
+      <li><a href="#roadmap">Practice roadmap</a></li>
+      <li><a href="#method">How to work</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header>
+      <h1>Learning React from the inside, one custom renderer at a time</h1>
+      <p class="lede">A personal study plan: build renderers on top of <code>react-reconciler</code>, starting with a plain object tree and ending with a small react-dom. No copied solutions; every line written by hand.</p>
+
+      <p class="stack-caption">Where a renderer sits</p>
+      <div class="stack" role="list">
+        <div class="layer" role="listitem"><strong>Your components</strong><span>JSX, hooks, state</span></div>
+        <div class="layer core" role="listitem"><strong>react-reconciler</strong><span>Fiber, diffing, scheduling</span></div>
+        <div class="layer you" role="listitem"><strong>Host config, written by you</strong><span>create, append, update, remove</span></div>
+        <div class="layer" role="listitem"><strong>Host environment</strong><span>Terminal, canvas, audio, PDF…</span></div>
+      </div>
+    </header>
+
+    <section id="why">
+      <h2>Why build a renderer</h2>
+      <p>Using React every day teaches you its API. Writing a renderer teaches you its contract: the exact moment React stops thinking and asks the platform to do something. React DOM, React Native, Ink, react-three-fiber and react-pdf all sit on the same package, <code>react-reconciler</code>. Each one supplies a "host config", an object of methods the reconciler calls to create, attach, update and remove host instances.</p>
+      <p>That makes the host config the cleanest window into React's engine. Every call it receives is a decision the reconciler has already made, so by watching and implementing those calls you learn how rendering, reconciliation, keys, commits and effects really behave.</p>
+      <h3>Two phases to keep in mind</h3>
+      <p>The render phase works out what should change. It must stay pure and can be interrupted or thrown away. The commit phase applies the changes to the host, all at once. Many host config methods only make sense once you know which phase calls them.</p>
+      <h3>Two modes to choose from</h3>
+      <p>In mutation mode you change host instances in place, the way the DOM works. In persistent mode you build new immutable trees, as React Native's newer architecture does. Mutation mode is the one to start with; it's far easier to reason about.</p>
+    </section>
+
+    <section id="roadmap">
+      <h2>Practice roadmap</h2>
+      <p>Nine renderers, ordered by complexity. Each step adds one or two new ideas on top of the previous ones, so you're never learning two hard things at once.</p>
+
+      <ol class="roadmap">
+        <li>
+          <h3>Plain object tree</h3>
+          <p>Host instances are plain JS objects; the "screen" is a JSON tree printed after each commit. No platform noise, so every surprise is a React surprise.</p>
+          <ul class="concepts"><li>host config basics</li><li>mount</li><li>text instances</li><li>root container</li></ul>
+        </li>
+        <li>
+          <h3>Markdown or HTML string</h3>
+          <p>Serialize the tree into a document. Mostly static, which reinforces mounting without the difficulty of updates.</p>
+          <ul class="concepts"><li>serialization</li><li>where text is allowed</li></ul>
+        </li>
+        <li>
+          <h3>Terminal, in the spirit of Ink</h3>
+          <p><code>&lt;Box&gt;</code> and <code>&lt;Text&gt;</code> drawn to stdout and redrawn on each commit. This is where <code>setState</code> stops being magic.</p>
+          <ul class="concepts"><li>updates</li><li>repaint after commit</li><li>keyboard input as events</li></ul>
+        </li>
+        <li>
+          <h3>Slack, Discord or spreadsheet output</h3>
+          <p>Render into a format with a strict external schema you don't control, such as message blocks or <code>.xlsx</code> cells.</p>
+          <ul class="concepts"><li>validating children</li><li>mapping props to a schema</li></ul>
+        </li>
+        <li>
+          <h3>Canvas 2D</h3>
+          <p><code>&lt;Rect&gt;</code>, <code>&lt;Circle&gt;</code>, <code>&lt;Group&gt;</code>. The canvas keeps no tree, so you keep your own and repaint it.</p>
+          <ul class="concepts"><li>retained tree</li><li>batched repaints</li><li>hit-testing</li><li>keyed reordering and z-order</li></ul>
+        </li>
+        <li>
+          <h3>Web Audio</h3>
+          <p>Oscillators inside gain nodes map onto the audio graph. A slider changing a frequency makes prop updates very tangible.</p>
+          <ul class="concepts"><li>non-visual graph</li><li>fine-grained updates</li><li>cleanup on unmount</li></ul>
+        </li>
+        <li>
+          <h3>Hardware: LEDs or an Arduino</h3>
+          <p>A slow, side-effectful host shows you why commit is separate from render, and why render must stay pure.</p>
+          <ul class="concepts"><li>async hosts</li><li>side effects at commit</li></ul>
+        </li>
+        <li>
+          <h3>3D with three.js</h3>
+          <p>The react-three-fiber idea. Rewarding once the basics are solid.</p>
+          <ul class="concepts"><li>external render loop</li><li>GPU resource disposal</li><li>generic prop application</li><li>refs to host objects</li></ul>
+        </li>
+        <li>
+          <h3>Mini react-dom</h3>
+          <p>The capstone. Rebuild a small subset of react-dom, then compare each of your decisions with the real implementation.</p>
+          <ul class="concepts"><li>attributes vs properties</li><li>styles</li><li>event delegation and bubbling</li><li>controlled inputs</li></ul>
+        </li>
+      </ol>
+    </section>
+
+    <section id="method">
+      <h2>How to work</h2>
+
+      <div class="practice">
+        <h3>Instrument before you implement</h3>
+        <p>Make every host config method log its name and arguments before it does anything else. Render a small tree, trigger a state change, remove a child, reorder a keyed list, and read the log. Ask why the calls happen in that order.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Grow features in a fixed order</h3>
+        <p>Static mount, then text, then prop updates through state, then removals, then keyed reordering, then events, then refs and effects, then Suspense and concurrent rendering. Each step pulls in a new group of host methods.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Match versions and trust the README</h3>
+        <p><code>react-reconciler</code> must match your <code>react</code> version. The host config API changed noticeably between React 18 and 19, and many tutorials predate that. When a tutorial and the README for your installed version disagree, the README and the type definitions win.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Read source when stuck, not before</h3>
+        <p>Struggle with your own implementation first, then read the matching explanation. Setting a breakpoint inside your <code>createInstance</code> and reading the call stack is a good way to discover the reconciler's own files.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Questions to answer for yourself</h3>
+        <ul class="questions">
+          <li>Why are there both <code>appendInitialChild</code> and <code>appendChild</code>?</li>
+          <li>Why is an instance created during render but only attached to the root at commit?</li>
+          <li>What does <code>shouldSetTextContent</code> change about the tree?</li>
+          <li>Why does the reconciler call you before and after each commit?</li>
+          <li>When do keys turn a remove-and-create into a move?</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="sources">
+      <h2>Sources</h2>
+      <p>Grouped in a suggested reading order. Pair each roadmap step with the matching deep dive after you've tried it yourself.</p>
+
+      <div class="group">
+        <h3>Build the mental model</h3>
+        <p>Read these before writing any code.</p>
+        <dl class="sources">
+          <dt><a href="https://overreacted.io/react-as-a-ui-runtime/">React as a UI Runtime</a>, Dan Abramov</dt>
+          <dd>Explains React through host trees, host instances and renderers, the same vocabulary the reconciler uses.</dd>
+          <dt><a href="https://react.dev/learn/render-and-commit">Render and Commit</a> and <a href="https://react.dev/learn/preserving-and-resetting-state">Preserving and Resetting State</a>, react.dev</dt>
+          <dd>Short official pages on the two phases and why tree position and keys matter.</dd>
+          <dt><a href="https://github.com/acdlite/react-fiber-architecture">React Fiber Architecture</a>, Andrew Clark</dt>
+          <dd>Written before Fiber shipped, so some details are dated, but still the clearest account of why Fiber exists.</dd>
+        </dl>
+      </div>
+
+      <div class="group">
+        <h3>Custom renderers</h3>
+        <p>Your primary references while building.</p>
+        <dl class="sources">
+          <dt><a href="https://github.com/facebook/react/tree/main/packages/react-reconciler">react-reconciler README</a></dt>
+          <dd>The official, best-effort documentation. The package is marked experimental and doesn't follow React's versioning, so read the README for your installed version.</dd>
+          <dt><a href="https://github.com/facebook/react/blob/main/packages/react-reconciler/src/forks/ReactFiberConfig.custom.js">ReactFiberConfig.custom.js</a></dt>
+          <dd>The full list of methods a host config can provide. The real source of truth.</dd>
+          <dt>Host configs inside React: <a href="https://github.com/facebook/react/blob/main/packages/react-art/src/ReactFiberConfigART.js">ART</a>, <a href="https://github.com/facebook/react/blob/main/packages/react-dom-bindings/src/client/ReactFiberConfigDOM.js">DOM</a>, <a href="https://github.com/facebook/react/blob/main/packages/react-native-renderer/src/ReactFiberConfigNative.js">Native</a></dt>
+          <dd>React ART's is the smallest and most readable; start there.</dd>
+          <dt><a href="https://www.infoq.com/news/2020/01/react-conf-2019-custom-renderer">Building a Custom React Renderer</a>, Sophie Alpert, React Conf 2019</dt>
+          <dd>The best short introduction; the talk itself is on YouTube. Its update methods predate React 19, so cross-check with the README.</dd>
+          <dt>Real renderers: <a href="https://github.com/vadimdemedes/ink">Ink</a>, <a href="https://github.com/pmndrs/react-three-fiber">react-three-fiber</a>, <a href="https://github.com/diegomura/react-pdf">react-pdf</a></dt>
+          <dd>Readable production code for when you're stuck on a specific step.</dd>
+          <dt><a href="https://github.com/chentsulin/awesome-react-renderer">awesome-react-renderer</a></dt>
+          <dd>A long list of community renderers to browse for ideas.</dd>
+        </dl>
+      </div>
+
+      <div class="group">
+        <h3>React internals</h3>
+        <p>For when you want to see the reconciler's side of the contract.</p>
+        <dl class="sources">
+          <dt><a href="https://jser.dev/">React Internals Deep Dive</a>, JSer</dt>
+          <dd>A thorough walkthrough of React's source: mounting, re-rendering, hooks, Suspense, bailouts and tree traversal, each with a post, a video and a debugging session. Read the overview, mount and re-render episodes before you implement updates.</dd>
+          <dt><a href="https://jser.dev/react/2022/02/08/the-diffing-algorithm-for-array-in-react">The diffing algorithm for arrays</a>, JSer</dt>
+          <dd>Read just before keyed reordering in the canvas renderer.</dd>
+          <dt><a href="https://pomb.us/build-your-own-react/">Build your own React</a>, Rodrigo Pombo</dt>
+          <dd>Rebuild a mini React with Fiber and hooks. The complementary path: your renderers teach the platform side, this teaches the React side.</dd>
+          <dt><a href="https://github.com/facebook/react/tree/main/packages">The React repository</a></dt>
+          <dd>Look in <code>react-reconciler/src</code> for the work loop, <code>beginWork</code>, <code>completeWork</code> and the commit files. <code>react-noop-renderer</code> is React's own minimal test renderer, an official cousin of roadmap step 1.</dd>
+        </dl>
+      </div>
+
+      <div class="note">
+        <p>APIs and links reflect React 19 and the state of these resources in October 2026. If something has moved, the React repository and the README of your installed <code>react-reconciler</code> are the places to check first.</p>
+      </div>
+    </section>
+
+    <footer>
+      Study plan for learning React internals through custom renderers.
+    </footer>
+  </main>
+</div>
+</body>
+</html>
