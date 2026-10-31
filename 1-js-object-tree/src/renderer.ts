@@ -7,7 +7,9 @@ const HostConfig = {
   appendInitialChild(parentInstance, children: any) {
     parentInstance.children.push(children);
   },
-  createTextInstance(text, rootContainer, hostContext, internalHandle) {},
+  createTextInstance(text, rootContainer, hostContext, internalHandle) {
+    return { text };
+  },
   createInstance(
     type: ReactNode,
     props: any,
@@ -16,10 +18,12 @@ const HostConfig = {
     internalInstanceHandle: any,
   ) {
     if (type === "box") {
-      return { type, props: { id: props.id }, children: [] };
+      const { children, ...rest } = props;
+      return { type, props: { ...rest }, children: [] };
     }
     if (type === "leaf") {
-      return { type, count: props.count };
+      const { children, ...rest } = props;
+      return { type, props: { ...rest }, children: [{ text: props.children }] };
     }
     if (type === "item") {
       return { type, id: props.id };
@@ -28,8 +32,7 @@ const HostConfig = {
   },
   supportsMutation: true,
   appendChild(parent: any, child: any) {
-
-    parent.children.push((child));
+    parent.children.push(child);
   },
 
   // ---- Placeholders: setup methods React requires but drill 1 doesn't use. ----
@@ -92,7 +95,13 @@ const HostConfig = {
     container.children.length = 0;
   },
   shouldSetTextContent: (type: ReactNode, props: any) => {
-    return type === "box" && typeof props.children === "string";
+    if (type === "box" && typeof props.children === "string") {
+      return true;
+    }
+    else if (type === "leaf" && typeof props.children === "string") {
+      return true;
+    }
+    return false;
   },
 
   appendChildToContainer: (container: OpaqueRoot, child: any) => {

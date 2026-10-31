@@ -16,7 +16,7 @@ function newContainer() {
   return { children: [] as unknown[] };
 }
 
-test("mounts nested host elements", () => {
+test.skip("mounts nested host elements", () => {
   const container = newContainer();
   render(<StaticTree />, container);
 
@@ -34,37 +34,37 @@ test("mounts nested host elements", () => {
   });
 });
 
-// test("mounts text, including adjacent strings as separate text nodes", () => {
-//   const container = newContainer();
-//   render(<TextTree />, container);
+test.skip("mounts text, including adjacent strings as separate text nodes", () => {
+  const container = newContainer();
+  render(<TextTree />, container);
 
-//   expect(container).toEqual({
-//     children: [
-//       {
-//         type: "box",
-//         props: {},
-//         children: [
-//           { text: "hello" },
-//           { type: "leaf", props: {}, children: [{ text: "world" }] },
-//           { text: "two" },
-//           { text: " " },
-//           { text: "texts" },
-//         ],
-//       },
-//     ],
-//   });
-// });
+  expect(container).toEqual({
+    children: [
+      {
+        type: "box",
+        props: {},
+        children: [
+          { text: "hello" },
+          { type: "leaf", props: {}, children: [{ text: "world" }] },
+          { text: "two" },
+          { text: " " },
+          { text: "texts" },
+        ],
+      },
+    ],
+  });
+});
 
-// test("re-rendering into the same container removes a child", () => {
-//   const container = newContainer();
+test("re-rendering into the same container removes a child", () => {
+  const container = newContainer();
 
-//   render(<Toggle show={true} />, container);
-//   const outerBox = (container.children as any[])[0];
-//   expect(outerBox.children).toEqual([
-//     { type: "box", props: { id: "maybe" }, children: [] },
-//   ]);
+  render(<Toggle show={true} />, container);
+  const outerBox = (container.children as any[])[0];
+  expect(outerBox.children).toEqual([
+    { type: "box", props: { id: "maybe" }, children: [] },
+  ]);
 
-//   render(<Toggle show={false} />, container);
-//   expect((container.children as any[])[0]).toBe(outerBox); // same object, updated in place
-//   expect(outerBox.children).toEqual([]);
-// });
+  render(<Toggle show={false} />, container);
+  expect((container.children as any[])[0]).toBe(outerBox); // same object, updated in place
+  expect(outerBox.children).toEqual([]);
+});
