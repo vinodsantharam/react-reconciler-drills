@@ -107,14 +107,57 @@ const HostConfig = {
   appendChildToContainer: (container: OpaqueRoot, child: any) => {
     container.children.push(child);
   },
+
+  // Props changed on an existing element: update it in place instead of recreating it.
+  // React calls this even when only `children` changed (the outer box in Toggle), so
+  // strip children the same way createInstance does.
+  commitUpdate: (instance: any, type: ReactNode, oldProps: any, newProps: any) => {
+    const { children, ...rest } = newProps;
+    instance.props = rest;
+  },
+
+  // Same as removeChildFromContainer, but for a child inside another host element
+  // (here: the "maybe" box inside the outer box when Toggle's show becomes false).
+  removeChild: (parent: any, child: any) => {
+    const index = parent.children.indexOf(child);
+    if (index !== -1) {
+      parent.children.splice(index, 1);
+    }
+  },
+
+  removeChildFromContainer: (container: OpaqueRoot, child: any) => {
+    const index = container.children.indexOf(child);
+    if (index !== -1) {
+      container.children.splice(index, 1);
+    }
+  }
 };
 
 let currentUpdatePriority = 0;
 
 const reconciler = Reconciler(instrument(HostConfig));
 
-export function render(element: React.ReactNode, container: Object): void {
-  const containerInstance: OpaqueRoot = reconciler.createContainer(
+// One React root per container, kept between render() calls. The root holds the
+// previous tree, which React needs in order to diff instead of mounting from scratch.
+// Like ReactDOM: createRoot(node) once, then root.render(...) many times.
+// A WeakMap lets a container (and its root) be garbage-collected once it's unused.
+const roots = new WeakMap<object, OpaqueRoot>();
+
+export function render(element: React.ReactNode, container: object): void {
+  let root = roots.get(container);
+  if (!root) {
+    root = createRoot(container);
+    roots.set(container, root);
+  }
+
+  // updateContainer only schedules the render for later. The sync variant queues it
+  // at sync priority, and flushSyncWork runs that queued work before returning.
+  reconciler.updateContainerSync(element, root, null, null);
+  reconciler.flushSyncWork();
+}
+
+function createRoot(container: object): OpaqueRoot {
+  return reconciler.createContainer(
     container,
     0,
     null,
@@ -133,9 +176,4 @@ export function render(element: React.ReactNode, container: Object): void {
     () => {},
     null,
   );
-
-  // updateContainer only schedules the render for later. The sync variant queues it
-  // at sync priority, and flushSyncWork runs that queued work before returning.
-  reconciler.updateContainerSync(element, containerInstance, null, null);
-  reconciler.flushSyncWork();
 }

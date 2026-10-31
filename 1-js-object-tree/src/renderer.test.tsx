@@ -16,7 +16,7 @@ function newContainer() {
   return { children: [] as unknown[] };
 }
 
-test.skip("mounts nested host elements", () => {
+test("mounts nested host elements", () => {
   const container = newContainer();
   render(<StaticTree />, container);
 
@@ -34,7 +34,7 @@ test.skip("mounts nested host elements", () => {
   });
 });
 
-test.skip("mounts text, including adjacent strings as separate text nodes", () => {
+test("mounts text, including adjacent strings as separate text nodes", () => {
   const container = newContainer();
   render(<TextTree />, container);
 
