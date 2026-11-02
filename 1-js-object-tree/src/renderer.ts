@@ -19,6 +19,9 @@ const HostConfig = {
   ) {
     if (type === "box") {
       const { children, ...rest } = props;
+      if(typeof children === "string") {
+        return { type, props: { ...rest }, children: [{ text: children }] };
+      }
       return { type, props: { ...rest }, children: [] };
     }
     if (type === "leaf") {
