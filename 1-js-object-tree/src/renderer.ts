@@ -19,9 +19,10 @@ const HostConfig = {
   ) {
     if (type === "box") {
       const { children, ...rest } = props;
-      if(typeof children === "string") {
-        return { type, props: { ...rest }, children: [{ text: children }] };
+      if (typeof children === "string") {
+        return { type, props: { ...rest }, children: [] };
       }
+
       return { type, props: { ...rest }, children: [] };
     }
     if (type === "leaf") {
@@ -97,11 +98,13 @@ const HostConfig = {
   clearContainer: (container: OpaqueRoot) => {
     container.children.length = 0;
   },
+
+  // - true means you take responsibility: React skips createTextInstance, and the element must hold the text itself.
+  // - false means React does it: it creates a { text } node with createTextInstance and passes it to appendInitialChild, just like any other child.
   shouldSetTextContent: (type: ReactNode, props: any) => {
     if (type === "box" && typeof props.children === "string") {
-      return true;
-    }
-    else if (type === "leaf" && typeof props.children === "string") {
+      return false;
+    } else if (type === "leaf" && typeof props.children === "string") {
       return true;
     }
     return false;
@@ -114,9 +117,22 @@ const HostConfig = {
   // Props changed on an existing element: update it in place instead of recreating it.
   // React calls this even when only `children` changed (the outer box in Toggle), so
   // strip children the same way createInstance does.
-  commitUpdate: (instance: any, type: ReactNode, oldProps: any, newProps: any) => {
+  commitUpdate: (
+    instance: any,
+    type: ReactNode,
+    oldProps: any,
+    newProps: any,
+  ) => {
     const { children, ...rest } = newProps;
     instance.props = rest;
+
+    if (type === "leaf" && instance.type === "leaf") {
+      instance.children = [{ text: newProps.children }];
+    }
+  },
+
+  commitTextUpdate: (textInstance: any, oldText: string, newText: string) => {
+    textInstance.text = newText;
   },
 
   // Same as removeChildFromContainer, but for a child inside another host element
@@ -133,7 +149,7 @@ const HostConfig = {
     if (index !== -1) {
       container.children.splice(index, 1);
     }
-  }
+  },
 };
 
 let currentUpdatePriority = 0;

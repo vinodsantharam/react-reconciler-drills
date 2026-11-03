@@ -79,7 +79,7 @@ function top(container: { children: unknown[] }): any {
 describe("text", () => {
   // shouldSetTextContent: if it returns true, React creates no text instance,
   // so the element itself must keep the text.
-  test.only("A: an element whose only child is a string keeps that text", () => {
+  test("A: an element whose only child is a string keeps that text", () => {
     const container = newContainer();
     render(<box>hello</box>, container);
 
