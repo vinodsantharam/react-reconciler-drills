@@ -27,7 +27,7 @@ const HostConfig = {
     }
     if (type === "leaf") {
       const { children, ...rest } = props;
-      return { type, props: { ...rest }, children: [{ text: props.children }] };
+      return { type, props: { ...rest }, children: [] };
     }
     if (type === "item") {
       return { type, id: props.id };
@@ -104,8 +104,12 @@ const HostConfig = {
   shouldSetTextContent: (type: ReactNode, props: any) => {
     if (type === "box" && typeof props.children === "string") {
       return false;
-    } else if (type === "leaf" && typeof props.children === "string") {
-      return true;
+    } 
+    else if (type === "leaf" && typeof props.children === "string") {
+      return false;
+    }
+    else if (type === "leaf" && typeof props.children === "number") {
+      return false;
     }
     return false;
   },
