@@ -171,6 +171,87 @@ describe("inserting and moving", () => {
     expect(second).toBe(a);
     expect(third).toBe(b);
   });
+
+  // insertBefore with a child that is already in the parent: React keeps b and c,
+  // and moves a in front of c, so a must be taken out of its old spot.
+  test("I: moving an existing child in front of a sibling", () => {
+    const container = newContainer();
+    render(<KeyedList ids={["a", "b", "c"]} />, container);
+    const [a, b, c] = top(container).children;
+
+    render(<KeyedList ids={["b", "a", "c"]} />, container);
+    expect(top(container).children).toHaveLength(3);
+    const [first, second, third] = top(container).children;
+    expect(first).toBe(b);
+    expect(second).toBe(a);
+    expect(third).toBe(c);
+  });
+});
+
+// The same operations, but at the top level: the children live directly in the
+// container, not inside a host element. React uses separate *Container methods here.
+describe("top level (container)", () => {
+  // insertInContainerBefore: a new top-level child goes in front of an existing one.
+  test("J: a new top-level child is inserted before an existing one", () => {
+    const container = newContainer();
+    const Tree = ({ showA }: { showA: boolean }) => (
+      <>
+        {showA && <box id="a" />}
+        <box id="b" />
+      </>
+    );
+    render(<Tree showA={false} />, container);
+    const b = container.children[0];
+
+    render(<Tree showA={true} />, container);
+    expect(container.children).toEqual([
+      { type: "box", props: { id: "a" }, children: [] },
+      { type: "box", props: { id: "b" }, children: [] },
+    ]);
+    expect(container.children[1]).toBe(b);
+  });
+
+  // insertInContainerBefore with a child already in the container: a move, not a copy.
+  test("K: moving an existing top-level child in front of a sibling", () => {
+    const container = newContainer();
+    const List = ({ ids }: { ids: string[] }) => (
+      <>
+        {ids.map((id) => (
+          <item key={id} id={id} />
+        ))}
+      </>
+    );
+    render(<List ids={["a", "b", "c"]} />, container);
+    const [a, b, c] = container.children;
+
+    render(<List ids={["b", "a", "c"]} />, container);
+    expect(container.children).toHaveLength(3);
+    const [first, second, third] = container.children;
+    expect(first).toBe(b);
+    expect(second).toBe(a);
+    expect(third).toBe(c);
+  });
+
+  // appendChildToContainer with a child already in the container: also a move.
+  test("L: moving an existing top-level child to the end", () => {
+    const container = newContainer();
+    const List = ({ ids }: { ids: string[] }) => (
+      <>
+        {ids.map((id) => (
+          <item key={id} id={id} />
+        ))}
+      </>
+    );
+    render(<List ids={["a", "b", "c"]} />, container);
+    const [a, b, c] = container.children;
+
+    render(<List ids={["c", "a", "b"]} />, container);
+    expect(container.children).toHaveLength(3);
+    const [first, second, third] = container.children;
+    expect(first).toBe(c);
+    expect(second).toBe(a);
+    expect(third).toBe(b);
+  });
 });
 
 // removeChildFromContainer. This one already passes; it guards against regressions.

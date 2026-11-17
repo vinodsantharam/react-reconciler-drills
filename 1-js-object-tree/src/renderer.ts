@@ -30,12 +30,18 @@ const HostConfig = {
       return { type, props: { ...rest }, children: [] };
     }
     if (type === "item") {
-      return { type, id: props.id };
+      return { type, props, children: [] };
     }
     throw new Error(`Unknown type: ${type}`);
   },
   supportsMutation: true,
+  // React also calls this to MOVE a child that is already in the list (keyed
+  // reorders). So: take it out of its old spot if it's there, then add it at the end.
   appendChild(parent: any, child: any) {
+    const oldIndex = parent.children.indexOf(child);
+    if (oldIndex !== -1) {
+      parent.children.splice(oldIndex, 1);
+    }
     parent.children.push(child);
   },
 
@@ -104,17 +110,19 @@ const HostConfig = {
   shouldSetTextContent: (type: ReactNode, props: any) => {
     if (type === "box" && typeof props.children === "string") {
       return false;
-    } 
-    else if (type === "leaf" && typeof props.children === "string") {
+    } else if (type === "leaf" && typeof props.children === "string") {
       return false;
-    }
-    else if (type === "leaf" && typeof props.children === "number") {
+    } else if (type === "leaf" && typeof props.children === "number") {
       return false;
     }
     return false;
   },
 
   appendChildToContainer: (container: OpaqueRoot, child: any) => {
+    const oldIndex = container.children.indexOf(child);
+    if (oldIndex !== -1) {
+      container.children.splice(oldIndex, 1);
+    }
     container.children.push(child);
   },
 
@@ -153,6 +161,25 @@ const HostConfig = {
     if (index !== -1) {
       container.children.splice(index, 1);
     }
+  },
+  // Like appendChild, this can be a move. Remove child FIRST, then look up
+  // beforeChild: removing child can shift beforeChild's index down by one.
+  insertBefore: (parent: any, child: any, beforeChild: any) => {
+    const oldIndex = parent.children.indexOf(child);
+    if (oldIndex !== -1) {
+      parent.children.splice(oldIndex, 1);
+    }
+    const index = parent.children.indexOf(beforeChild);
+    parent.children.splice(index, 0, child);
+  },
+
+  insertInContainerBefore: (container: OpaqueRoot, child: any, beforeChild: any) => {
+    const oldIndex = container.children.indexOf(child);
+    if (oldIndex !== -1) {
+      container.children.splice(oldIndex, 1);
+    }
+    const index = container.children.indexOf(beforeChild);
+    container.children.splice(index, 0, child);
   },
 };
 
