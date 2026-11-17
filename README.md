@@ -53,7 +53,7 @@ Nine renderers, ordered by complexity. Each step adds one or two new ideas on to
 
 Progress:
 
-- [ ] 1. Plain object tree
+- [x] 1. Plain object tree
 - [ ] 2. Markdown or HTML string
 - [ ] 3. Terminal
 - [ ] 4. Slack, Discord or spreadsheet output
