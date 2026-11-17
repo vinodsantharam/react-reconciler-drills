@@ -137,10 +137,6 @@ const HostConfig = {
   ) => {
     const { children, ...rest } = newProps;
     instance.props = rest;
-
-    if (type === "leaf" && instance.type === "leaf") {
-      instance.children = [{ text: newProps.children }];
-    }
   },
 
   commitTextUpdate: (textInstance: any, oldText: string, newText: string) => {

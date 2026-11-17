@@ -131,6 +131,43 @@ describe("text", () => {
       { type: "box", props: { id: "z" }, children: [] },
     ]);
   });
+
+  // commitTextUpdate: like C, but on a leaf. The text node React created must be
+  // the one that ends up holding the new text, not a fresh copy.
+  test("M: changing a leaf's only string child updates the same text node", () => {
+    const container = newContainer();
+    render(<leaf>one</leaf>, container);
+    const text = top(container).children[0];
+
+    render(<leaf>two</leaf>, container);
+    expect(top(container).children).toEqual([{ text: "two" }]);
+    expect(top(container).children[0]).toBe(text);
+  });
+
+  // commitUpdate: changing a leaf's props must not touch its children.
+  test("N: changing a leaf's props keeps its element children", () => {
+    const container = newContainer();
+    render(
+      <leaf>
+        <box id="z" />
+      </leaf>,
+      container,
+    );
+    const z = top(container).children[0];
+
+    render(
+      <leaf count={2}>
+        <box id="z" />
+      </leaf>,
+      container,
+    );
+    expect(top(container)).toEqual({
+      type: "leaf",
+      props: { count: 2 },
+      children: [{ type: "box", props: { id: "z" }, children: [] }],
+    });
+    expect(top(container).children[0]).toBe(z);
+  });
 });
 
 describe("inserting and moving", () => {
