@@ -13,36 +13,107 @@ export type Container = {
   onChange?: (output: string) => void;
 };
 
+// ---- The tree: same shape as drill 1. ----
+type TextNode = { text: string };
+type ElementNode = { type: string; props: Record<string, unknown>; children: TreeNode[] };
+type TreeNode = ElementNode | TextNode;
+
+// What the renderer keeps on the container: the top-level nodes, like drill 1's
+// `{ children: [] }`. The Markdown string is computed FROM this list, in resetAfterCommit.
+type HostContainer = Container & { children: TreeNode[] };
+
 const HostConfig = {
-  
+  supportsMutation: true,
+
   resolveEventTimeStamp: () => -1.1,
   resolveEventType: () => null,
-  updateContainerSync: (element: ReactNode, container: Container, parentComponent: any, callback: any) => {
-    reconciler.updateContainer(element, container, parentComponent, callback);
-  },
+  trackSchedulerEvent: () => null,
   getRootHostContext: () => ({}),
+  getChildHostContext: () => ({}),
   getCurrentUpdatePriority: () => currentUpdatePriority,
   setCurrentUpdatePriority: (priority: number) => {
     currentUpdatePriority = priority;
   },
+  finalizeInitialChildren: () => false,
+  detachDeletedInstance: () => {},
+
+  // ---- Job 1: keep the tree up to date. No Markdown in here. ----
+
+  createInstance(type: string, props: any): ElementNode {
+    if (type === "heading") {
+      const { children, ...rest } = props;
+      return { type, props: rest, children: [] };
+    }
+    throw new Error(`Unknown type: ${type}`);
+  },
+  createTextInstance(text: string): TextNode {
+    return { text };
+  },
+  shouldSetTextContent(_type: string, _props: unknown) {
+    return false;
+  },
+  appendInitialChild(parent: ElementNode, child: TreeNode) {
+    parent.children.push(child);
+  },
+  appendChild(parent: ElementNode, child: TreeNode) {
+    const oldIndex = parent.children.indexOf(child);
+    if (oldIndex !== -1) {
+      parent.children.splice(oldIndex, 1);
+    }
+    parent.children.push(child);
+  },
+
+  // Container methods change the container's list of top-level nodes, exactly like
+  // appendChild does for an element. Before: this built the string here, so later
+  // commits (updates, removals) never changed it.
+  appendChildToContainer(container: HostContainer, child: TreeNode) {
+    const oldIndex = container.children.indexOf(child);
+    if (oldIndex !== -1) {
+      container.children.splice(oldIndex, 1);
+    }
+    container.children.push(child);
+  },
+  clearContainer(container: HostContainer) {
+    container.children = [];
+  },
+
+  commitUpdate(instance: ElementNode, _type: string, _oldProps: unknown, newProps: any) {
+    const { children, ...rest } = newProps;
+    instance.props = rest;
+  },
+  commitTextUpdate(textInstance: TextNode, _oldText: string, newText: string) {
+    textInstance.text = newText;
+  },
+
+  // ---- Job 2: turn the whole tree into Markdown, once per commit. ----
+
   prepareForCommit: () => null,
-  trackSchedulerEvent: () => null,
-  resetAfterCommit: (container: Container) => {
+  // Runs once after ALL of a commit's changes are applied, so the tree is complete
+  // and correct here, whatever happened in this commit (mount, update, removal...).
+  resetAfterCommit(container: HostContainer) {
+    container.output = toMarkdown(container);
     container.onChange?.(container.output);
   },
-  appendInitialChild(parentInstance: { children: any[]; }, children: any) {
-    parentInstance.children.push(children);
-  },
-  commitUpdate(instance: any, updatePayload: any, type: any, oldProps: any, newProps: any, internalHandle: any) {
-    instance.props = newProps;
-  },
+};
+
+// Walks the container's top-level nodes. Each block's code is your original
+// toMarkdown, unchanged: it only knows headings for now.
+function toMarkdown(container: HostContainer): string {
+  return container.children.map(blockToMarkdown).join("");
 }
 
-
+function blockToMarkdown(node: TreeNode): string {
+  let content = "";
+  if ("type" in node && node.type === "heading") {
+    const prefix = "#".repeat(node.props.level as number);
+    content += `${prefix} ${(node.children[0] as TextNode).text}\n`;
+  }
+  return content;
+}
 
 let currentUpdatePriority = 0;
 
-const reconciler = Reconciler(instrument(HostConfig));
+const reconciler = Reconciler(instrument(HostConfig as any));
 
 // One React root per container, kept between render() calls. The root holds the
 // previous tree, which React needs in order to diff instead of mounting from scratch.
@@ -53,6 +124,8 @@ const roots = new WeakMap<object, OpaqueRoot>();
 export function render(element: ReactNode, container: Container): void {
   let root = roots.get(container);
   if (!root) {
+    // The caller's container only has `output`. Give it a place for the tree.
+    (container as HostContainer).children = [];
     root = createRoot(container);
     roots.set(container, root);
   }

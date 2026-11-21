@@ -49,7 +49,7 @@ function md(element: ReactNode): string {
 }
 
 describe("blocks", () => {
-  test.only("1: an empty document is an empty string", () => {
+  test("1: an empty document is an empty string", () => {
     expect(md(null)).toBe("");
   });
 
