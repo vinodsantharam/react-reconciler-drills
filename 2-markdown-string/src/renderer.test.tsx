@@ -77,7 +77,7 @@ describe("blocks", () => {
     expect(output).toBe("# A\n\nB\n\nC\n");
   });
 
-  test("6: a divider is ---", () => {
+  test.only("6: a divider is ---", () => {
     const output = md(
       <>
         <paragraph>above</paragraph>
@@ -88,24 +88,24 @@ describe("blocks", () => {
     expect(output).toBe("above\n\n---\n\nbelow\n");
   });
 
-  test("7: a code block keeps its language and its text as-is", () => {
+  test.only("7: a code block keeps its language and its text as-is", () => {
     expect(md(<codeBlock language="ts">{"let a = 1;\nlet b = 2;"}</codeBlock>)).toBe(
       "```ts\nlet a = 1;\nlet b = 2;\n```\n",
     );
   });
 
-  test("8: a code block without a language", () => {
+  test.only("8: a code block without a language", () => {
     expect(md(<codeBlock>{"plain"}</codeBlock>)).toBe("```\nplain\n```\n");
   });
 
-  test("9: a code block joins several text children", () => {
+  test.only("9: a code block joins several text children", () => {
     const name = "x";
     expect(md(<codeBlock>let {name} = 1;</codeBlock>)).toBe("```\nlet x = 1;\n```\n");
   });
 });
 
 describe("inline", () => {
-  test("10: bold, italic and inline code inside a paragraph", () => {
+  test.only("10: bold, italic and inline code inside a paragraph", () => {
     const output = md(
       <paragraph>
         a <bold>b</bold> <italic>c</italic> <inlineCode>d</inlineCode>

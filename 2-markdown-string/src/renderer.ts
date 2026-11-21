@@ -15,7 +15,11 @@ export type Container = {
 
 // ---- The tree: same shape as drill 1. ----
 type TextNode = { text: string };
-type ElementNode = { type: string; props: Record<string, unknown>; children: TreeNode[] };
+type ElementNode = {
+  type: string;
+  props: Record<string, unknown>;
+  children: TreeNode[];
+};
 type TreeNode = ElementNode | TextNode;
 
 // What the renderer keeps on the container: the top-level nodes, like drill 1's
@@ -40,7 +44,16 @@ const HostConfig = {
   // ---- Job 1: keep the tree up to date. No Markdown in here. ----
 
   createInstance(type: string, props: any): ElementNode {
-    if (type === "heading" || type === "paragraph") {
+    if (
+      type === "heading" ||
+      type === "paragraph" ||
+      type === "divider" ||
+      type === "codeBlock" ||
+      type === "bold" ||
+      type === "italic" ||
+      type === "inlineCode" ||
+      type === "anchor"
+    ) {
       const { children, ...rest } = props;
       return { type, props: rest, children: [] };
     }
@@ -77,7 +90,12 @@ const HostConfig = {
     container.children = [];
   },
 
-  commitUpdate(instance: ElementNode, _type: string, _oldProps: unknown, newProps: any) {
+  commitUpdate(
+    instance: ElementNode,
+    _type: string,
+    _oldProps: unknown,
+    newProps: any,
+  ) {
     const { children, ...rest } = newProps;
     instance.props = rest;
   },
@@ -99,34 +117,68 @@ const HostConfig = {
 // Walks the container's top-level nodes. Each block's code is your original
 // toMarkdown, unchanged: it only knows headings for now.
 function toMarkdown(container: HostContainer): string {
-  if(container.children.length === 0) {
+  if (container.children.length === 0) {
     return "";
-  }
-  else if(container.children.length === 1) {
+  } else if (container.children.length === 1) {
     return container.children.map(blockToMarkdown) + "\n";
   }
   const len = container.children.length;
-  return container.children.map((item, index) => {
-    const block = blockToMarkdown(item);
-    if(index === 0) {
-      return block + "\n";
-    }
-    return "\n" + block + "\n";
-  }).join('');
+  return container.children
+    .map((item, index) => {
+      const block = blockToMarkdown(item);
+      if (index === 0) {
+        return block + "\n";
+      }
+      return "\n" + block + "\n";
+    })
+    .join("");
 }
 
 function blockToMarkdown(node: TreeNode): string {
   let content = "";
   if ("type" in node && node.type === "heading") {
     const prefix = "#".repeat(node.props.level as number);
-    content += `${prefix} ${(node.children.map((child) => (child as TextNode).text).join(''))}`;
+    content += `${prefix} ${node.children.map(inlineToMarkdown).join("")}`;
   }
 
   if ("type" in node && node.type === "paragraph") {
-    content += node.children.map((child) => (child as TextNode).text).join("");
+    content += node.children.map(inlineToMarkdown).join("");
+  }
+
+  if ("type" in node && node.type === "divider") {
+    content += "---";
+  }
+
+  if ("type" in node && node.type === "codeBlock") {
+    if (node.props.language) {
+      content += `\`\`\`${node.props.language}\n${node.children.map((child) => (child as TextNode).text).join("")}\n\`\`\``;
+    } else {
+      content += `\`\`\`\n${node.children.map((child) => (child as TextNode).text).join("")}\n\`\`\``;
+    }
   }
 
   return content;
+}
+
+// Inline content: text, or an inline element wrapping more inline content.
+// Recursion: an element's inner Markdown is its children's Markdown, joined.
+function inlineToMarkdown(node: TreeNode): string {
+  if ("text" in node) {
+    return node.text;
+  }
+  const inner = node.children.map(inlineToMarkdown).join("");
+  switch (node.type) {
+    case "bold":
+      return `**${inner}**`;
+    case "italic":
+      return `_${inner}_`;
+    case "inlineCode":
+      return `\`${inner}\``;
+    case "anchor":
+      return `[${inner}](${node.props.href})`;
+    default:
+      throw new Error(`<${node.type}> is not inline content`);
+  }
 }
 
 let currentUpdatePriority = 0;
