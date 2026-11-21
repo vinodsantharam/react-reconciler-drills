@@ -49,24 +49,24 @@ function md(element: ReactNode): string {
 }
 
 describe("blocks", () => {
-  test("1: an empty document is an empty string", () => {
+  test.only("1: an empty document is an empty string", () => {
     expect(md(null)).toBe("");
   });
 
-  test("2: a heading uses one # per level", () => {
+  test.only("2: a heading uses one # per level", () => {
     expect(md(<heading level={1}>Title</heading>)).toBe("# Title\n");
     expect(md(<heading level={3}>Deep</heading>)).toBe("### Deep\n");
   });
 
-  test("3: a paragraph joins its text children", () => {
+  test.only("3: a paragraph joins its text children", () => {
     expect(md(<paragraph>{"one"} {"two"}</paragraph>)).toBe("one two\n");
   });
 
-  test("4: a number child is text", () => {
+  test.only("4: a number child is text", () => {
     expect(md(<heading level={2}>{3} steps</heading>)).toBe("## 3 steps\n");
   });
 
-  test("5: blocks are separated by a blank line", () => {
+  test.only("5: blocks are separated by a blank line", () => {
     const output = md(
       <>
         <heading level={1}>A</heading>

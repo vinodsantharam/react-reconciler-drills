@@ -40,7 +40,7 @@ const HostConfig = {
   // ---- Job 1: keep the tree up to date. No Markdown in here. ----
 
   createInstance(type: string, props: any): ElementNode {
-    if (type === "heading") {
+    if (type === "heading" || type === "paragraph") {
       const { children, ...rest } = props;
       return { type, props: rest, children: [] };
     }
@@ -99,15 +99,33 @@ const HostConfig = {
 // Walks the container's top-level nodes. Each block's code is your original
 // toMarkdown, unchanged: it only knows headings for now.
 function toMarkdown(container: HostContainer): string {
-  return container.children.map(blockToMarkdown).join("");
+  if(container.children.length === 0) {
+    return "";
+  }
+  else if(container.children.length === 1) {
+    return container.children.map(blockToMarkdown) + "\n";
+  }
+  const len = container.children.length;
+  return container.children.map((item, index) => {
+    const block = blockToMarkdown(item);
+    if(index === 0) {
+      return block + "\n";
+    }
+    return "\n" + block + "\n";
+  }).join('');
 }
 
 function blockToMarkdown(node: TreeNode): string {
   let content = "";
   if ("type" in node && node.type === "heading") {
     const prefix = "#".repeat(node.props.level as number);
-    content += `${prefix} ${(node.children[0] as TextNode).text}\n`;
+    content += `${prefix} ${(node.children.map((child) => (child as TextNode).text).join(''))}`;
   }
+
+  if ("type" in node && node.type === "paragraph") {
+    content += node.children.map((child) => (child as TextNode).text).join("");
+  }
+
   return content;
 }
 
