@@ -162,9 +162,16 @@ function blockToMarkdown(node: TreeNode): string {
 
 // Inline content: text, or an inline element wrapping more inline content.
 // Recursion: an element's inner Markdown is its children's Markdown, joined.
+// Put a backslash before every character Markdown would read as syntax:
+// \ * _ ` [ ]. The backslash itself is in the list, otherwise "a\b" would be ambiguous.
+// One regex pass, so a backslash we add is never escaped again.
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\*_`[\]]/g, (char) => "\\" + char);
+}
+
 function inlineToMarkdown(node: TreeNode): string {
   if ("text" in node) {
-    return node.text;
+    return escapeMarkdown(node.text);
   }
   const inner = node.children.map(inlineToMarkdown).join("");
   switch (node.type) {
