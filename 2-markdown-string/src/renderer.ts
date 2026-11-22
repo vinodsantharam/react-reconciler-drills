@@ -154,6 +154,23 @@ const HostConfig = {
     container.children = [];
   },
 
+  // ---- Removing and inserting: same as drill 1, for elements and for the container. ----
+
+  removeChild(parent: ElementNode, child: TreeNode) {
+    removeFrom(parent.children, child);
+  },
+  removeChildFromContainer(container: HostContainer, child: TreeNode) {
+    removeFrom(container.children, child);
+  },
+  // Can be a MOVE (keyed reorder): take the child out first, THEN find beforeChild,
+  // because removing the child can shift beforeChild's index down by one.
+  insertBefore(parent: ElementNode, child: TreeNode, beforeChild: TreeNode) {
+    insertInto(parent.children, child, beforeChild);
+  },
+  insertInContainerBefore(container: HostContainer, child: TreeNode, beforeChild: TreeNode) {
+    insertInto(container.children, child, beforeChild);
+  },
+
   commitUpdate(
     instance: ElementNode,
     _type: string,
@@ -274,6 +291,19 @@ function inlineToMarkdown(node: TreeNode): string {
     default:
       throw new Error(`<${node.type}> is not inline content`);
   }
+}
+
+// Shared by the element and container versions: both just edit a children array.
+function removeFrom(children: TreeNode[], child: TreeNode) {
+  const index = children.indexOf(child);
+  if (index !== -1) {
+    children.splice(index, 1);
+  }
+}
+
+function insertInto(children: TreeNode[], child: TreeNode, beforeChild: TreeNode) {
+  removeFrom(children, child);
+  children.splice(children.indexOf(beforeChild), 0, child);
 }
 
 let currentUpdatePriority = 0;

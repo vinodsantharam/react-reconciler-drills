@@ -49,24 +49,24 @@ function md(element: ReactNode): string {
 }
 
 describe("blocks", () => {
-  test.only("1: an empty document is an empty string", () => {
+  test("1: an empty document is an empty string", () => {
     expect(md(null)).toBe("");
   });
 
-  test.only("2: a heading uses one # per level", () => {
+  test("2: a heading uses one # per level", () => {
     expect(md(<heading level={1}>Title</heading>)).toBe("# Title\n");
     expect(md(<heading level={3}>Deep</heading>)).toBe("### Deep\n");
   });
 
-  test.only("3: a paragraph joins its text children", () => {
+  test("3: a paragraph joins its text children", () => {
     expect(md(<paragraph>{"one"} {"two"}</paragraph>)).toBe("one two\n");
   });
 
-  test.only("4: a number child is text", () => {
+  test("4: a number child is text", () => {
     expect(md(<heading level={2}>{3} steps</heading>)).toBe("## 3 steps\n");
   });
 
-  test.only("5: blocks are separated by a blank line", () => {
+  test("5: blocks are separated by a blank line", () => {
     const output = md(
       <>
         <heading level={1}>A</heading>
@@ -77,7 +77,7 @@ describe("blocks", () => {
     expect(output).toBe("# A\n\nB\n\nC\n");
   });
 
-  test.only("6: a divider is ---", () => {
+  test("6: a divider is ---", () => {
     const output = md(
       <>
         <paragraph>above</paragraph>
@@ -88,24 +88,24 @@ describe("blocks", () => {
     expect(output).toBe("above\n\n---\n\nbelow\n");
   });
 
-  test.only("7: a code block keeps its language and its text as-is", () => {
+  test("7: a code block keeps its language and its text as-is", () => {
     expect(md(<codeBlock language="ts">{"let a = 1;\nlet b = 2;"}</codeBlock>)).toBe(
       "```ts\nlet a = 1;\nlet b = 2;\n```\n",
     );
   });
 
-  test.only("8: a code block without a language", () => {
+  test("8: a code block without a language", () => {
     expect(md(<codeBlock>{"plain"}</codeBlock>)).toBe("```\nplain\n```\n");
   });
 
-  test.only("9: a code block joins several text children", () => {
+  test("9: a code block joins several text children", () => {
     const name = "x";
     expect(md(<codeBlock>let {name} = 1;</codeBlock>)).toBe("```\nlet x = 1;\n```\n");
   });
 });
 
 describe("inline", () => {
-  test.only("10: bold, italic and inline code inside a paragraph", () => {
+  test("10: bold, italic and inline code inside a paragraph", () => {
     const output = md(
       <paragraph>
         a <bold>b</bold> <italic>c</italic> <inlineCode>d</inlineCode>
@@ -114,29 +114,29 @@ describe("inline", () => {
     expect(output).toBe("a **b** _c_ `d`\n");
   });
 
-  test.only("11: inline elements nest", () => {
+  test("11: inline elements nest", () => {
     expect(md(<paragraph><bold>a <italic>b</italic></bold></paragraph>)).toBe("**a _b_**\n");
   });
 
-  test.only("12: an anchor wraps its content and keeps its href", () => {
+  test("12: an anchor wraps its content and keeps its href", () => {
     expect(md(<paragraph>see <anchor href="https://react.dev">the <bold>docs</bold></anchor></paragraph>)).toBe(
       "see [the **docs**](https://react.dev)\n",
     );
   });
 
-  test.only("13: inline elements work inside headings", () => {
+  test("13: inline elements work inside headings", () => {
     expect(md(<heading level={2}>Use <inlineCode>render</inlineCode></heading>)).toBe("## Use `render`\n");
   });
 });
 
 describe("escaping", () => {
-  test.only("14: Markdown characters in normal text are escaped", () => {
+  test("14: Markdown characters in normal text are escaped", () => {
     expect(md(<paragraph>{"2 * 3, snake_case, [x], `y`, a\\b"}</paragraph>)).toBe(
       "2 \\* 3, snake\\_case, \\[x\\], \\`y\\`, a\\\\b\n",
     );
   });
 
-  test.only("15: escaping applies inside headings and inline elements too", () => {
+  test("15: escaping applies inside headings and inline elements too", () => {
     expect(md(<heading level={1}>a_b <bold>c*d</bold></heading>)).toBe("# a\\_b **c\\*d**\n");
   });
 
@@ -144,25 +144,25 @@ describe("escaping", () => {
     expect(md(<paragraph><inlineCode>a*b_c</inlineCode></paragraph>)).toBe("`a*b_c`\n");
   });
 
-  test.only("17: text inside a code block is not escaped", () => {
+  test("17: text inside a code block is not escaped", () => {
     expect(md(<codeBlock>{"**not bold** [x]"}</codeBlock>)).toBe("```\n**not bold** [x]\n```\n");
   });
 });
 
 describe("lists", () => {
-  test.only("18: an unordered list", () => {
+  test("18: an unordered list", () => {
     expect(md(<Steps ordered={false} steps={["a", "b"]} />)).toBe("- a\n- b\n");
   });
 
-  test.only("19: an ordered list is numbered from 1", () => {
+  test("19: an ordered list is numbered from 1", () => {
     expect(md(<Steps steps={["a", "b", "c"]} />)).toBe("1. a\n2. b\n3. c\n");
   });
 
-  test.only("20: list items hold inline elements", () => {
+  test("20: list items hold inline elements", () => {
     expect(md(<list><listItem>use <bold>keys</bold></listItem></list>)).toBe("- use **keys**\n");
   });
 
-  test.only("21: a nested list is indented by the parent's marker width", () => {
+  test("21: a nested list is indented by the parent's marker width", () => {
     const output = md(
       <list>
         <listItem>
@@ -176,7 +176,7 @@ describe("lists", () => {
     expect(output).toBe("- a\n  - b\n");
   });
 
-  test.only("22: nesting under an ordered item indents by 3", () => {
+  test("22: nesting under an ordered item indents by 3", () => {
     const output = md(
       <list ordered>
         <listItem>
@@ -192,7 +192,7 @@ describe("lists", () => {
     expect(output).toBe("1. a\n   - b\n   - c\n2. d\n");
   });
 
-  test.only("23: three levels deep", () => {
+  test("23: three levels deep", () => {
     const output = md(
       <list>
         <listItem>
@@ -232,7 +232,7 @@ function expectToThrow(run: () => unknown) {
 
 describe("where things are allowed", () => {
   // Positive control: deep nesting of allowed things must not throw.
-  test.only("25: text deep inside allowed elements is fine", () => {
+  test("25: text deep inside allowed elements is fine", () => {
     expect(() =>
       md(
         <list>
@@ -248,47 +248,47 @@ describe("where things are allowed", () => {
     ).not.toThrow();
   });
 
-  test.only("26: text at the top level throws", () => {
+  test("26: text at the top level throws", () => {
     expectToThrow(() => md(<>hello</>));
   });
 
-  test.only("27: text directly inside a list throws", () => {
+  test("27: text directly inside a list throws", () => {
     expectToThrow(() => md(<list>oops</list>));
   });
 
-  test.only("28: an inline element at the top level throws", () => {
+  test("28: an inline element at the top level throws", () => {
     expectToThrow(() => md(<bold>loud</bold>));
   });
 
-  test.only("29: a block inside a paragraph throws", () => {
+  test("29: a block inside a paragraph throws", () => {
     expectToThrow(() => md(<paragraph><heading level={1}>no</heading></paragraph>));
   });
 
-  test.only("30: a list item outside a list throws", () => {
+  test("30: a list item outside a list throws", () => {
     expectToThrow(() => md(<listItem>alone</listItem>));
   });
 
-  test.only("31: a list item inside a paragraph throws", () => {
+  test("31: a list item inside a paragraph throws", () => {
     expectToThrow(() => md(<paragraph><listItem>no</listItem></paragraph>));
   });
 
-  test.only("32: an element inside a code block throws", () => {
+  test("32: an element inside a code block throws", () => {
     expectToThrow(() => md(<codeBlock><bold>x</bold></codeBlock>));
   });
 
-  test.only("33: an element inside inline code throws", () => {
+  test("33: an element inside inline code throws", () => {
     expectToThrow(() => md(<paragraph><inlineCode><italic>x</italic></inlineCode></paragraph>));
   });
 
-  test.only("34: anything inside a divider throws", () => {
+  test("34: anything inside a divider throws", () => {
     expectToThrow(() => md(<divider>text</divider>));
   });
 
-  test.only("35: an unknown element type throws", () => {
+  test("35: an unknown element type throws", () => {
     expectToThrow(() => md(createElement("blink", null, "hi")));
   });
 
-  test.only("36: misplaced text added by an update throws", () => {
+  test("36: misplaced text added by an update throws", () => {
     const container = newContainer();
     render(<list><listItem>a</listItem></list>, container);
     expectToThrow(() => render(<list><listItem>a</listItem>stray</list>, container));
@@ -296,28 +296,28 @@ describe("where things are allowed", () => {
 });
 
 describe("updates", () => {
-  test.only("37: changing text updates the output", () => {
+  test("37: changing text updates the output", () => {
     const container = newContainer();
     render(<paragraph>count: {1}</paragraph>, container);
     render(<paragraph>count: {2}</paragraph>, container);
     expect(container.output).toBe("count: 2\n");
   });
 
-  test.only("38: changing a heading's level", () => {
+  test("38: changing a heading's level", () => {
     const container = newContainer();
     render(<heading level={1}>T</heading>, container);
     render(<heading level={2}>T</heading>, container);
     expect(container.output).toBe("## T\n");
   });
 
-  test.only("39: changing an anchor's href", () => {
+  test("39: changing an anchor's href", () => {
     const container = newContainer();
     render(<paragraph><anchor href="/a">x</anchor></paragraph>, container);
     render(<paragraph><anchor href="/b">x</anchor></paragraph>, container);
     expect(container.output).toBe("[x](/b)\n");
   });
 
-  test.only("40: removing a block from the middle", () => {
+  test("40: removing a block from the middle", () => {
     const container = newContainer();
     render(<Toggle show={true} />, container);
     expect(container.output).toBe("before\n\nmiddle\n\nafter\n");
