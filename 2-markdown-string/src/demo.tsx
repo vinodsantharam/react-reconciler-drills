@@ -36,7 +36,11 @@ export function Article() {
 // 2. State changes from outside render(): the output must follow on its own.
 export function Counter({ onReady }: { onReady?: (inc: () => void) => void }) {
   const [count, setCount] = useState(0);
-  useEffect(() => onReady?.(() => setCount((c) => c + 1)), [onReady]);
+  // Braces on purpose: an effect's return value is its cleanup. An expression body
+  // would return whatever onReady returns, and strict mode runs cleanups on mount.
+  useEffect(() => {
+    onReady?.(() => setCount((c) => c + 1));
+  }, [onReady]);
   return <paragraph>count: {count}</paragraph>;
 }
 

@@ -95,6 +95,7 @@ const HostConfig = {
   },
   finalizeInitialChildren: () => false,
   detachDeletedInstance: () => {},
+  resolveUpdatePriority: () => currentUpdatePriority || DefaultEventPriority,
 
   // ---- Job 1: keep the tree up to date. No Markdown in here. ----
 
