@@ -14,7 +14,9 @@ export type Container = {
 };
 
 // ---- The tree: same shape as drill 1. ----
-type TextNode = { text: string };
+// `raw`: the text sits inside inlineCode or codeBlock, so it's never escaped.
+// It's decided once, when React creates the text node, from the host context.
+type TextNode = { text: string; raw: boolean };
 type ElementNode = {
   type: string;
   props: Record<string, unknown>;
@@ -26,14 +28,67 @@ type TreeNode = ElementNode | TextNode;
 // `{ children: [] }`. The Markdown string is computed FROM this list, in resetAfterCommit.
 type HostContainer = Container & { children: TreeNode[] };
 
+// ---- Host context: "what kind of place am I in?" ----
+// React passes this DOWN the tree during the render phase. getRootHostContext gives
+// the top level's value; getChildHostContext(parentContext, type) gives the value for
+// the children of an element of `type`. createInstance and createTextInstance receive
+// the context of the place they're being created in, so they can refuse what doesn't
+// belong there. react-dom uses the same mechanism to know it's inside an <svg>.
+type HostContext =
+  | "root" //     top level: blocks only
+  | "inline" //   inside heading, paragraph, bold, italic, anchor: text + inline elements
+  | "listItem" // like inline, plus a nested list
+  | "list" //     listItem only
+  | "raw" //      inside codeBlock, inlineCode: text only, never escaped
+  | "empty"; //   inside divider: nothing
+
+const BLOCKS = ["heading", "paragraph", "list", "codeBlock", "divider"];
+const INLINES = ["bold", "italic", "inlineCode", "anchor"];
+
+function contextForChildrenOf(type: string): HostContext {
+  switch (type) {
+    case "list":
+      return "list";
+    case "listItem":
+      return "listItem";
+    case "codeBlock":
+    case "inlineCode":
+      return "raw";
+    case "divider":
+      return "empty";
+    default:
+      return "inline";
+  }
+}
+
+function isElementAllowed(context: HostContext, type: string): boolean {
+  switch (context) {
+    case "root":
+      return BLOCKS.includes(type);
+    case "inline":
+      return INLINES.includes(type);
+    case "listItem":
+      return INLINES.includes(type) || type === "list";
+    case "list":
+      return type === "listItem";
+    default:
+      return false; // raw and empty hold no elements
+  }
+}
+
+function isTextAllowed(context: HostContext): boolean {
+  return context === "inline" || context === "listItem" || context === "raw";
+}
+
 const HostConfig = {
   supportsMutation: true,
 
   resolveEventTimeStamp: () => -1.1,
   resolveEventType: () => null,
   trackSchedulerEvent: () => null,
-  getRootHostContext: () => ({}),
-  getChildHostContext: () => ({}),
+  getRootHostContext: (): HostContext => "root",
+  getChildHostContext: (_parentContext: HostContext, type: string): HostContext =>
+    contextForChildrenOf(type),
   getCurrentUpdatePriority: () => currentUpdatePriority,
   setCurrentUpdatePriority: (priority: number) => {
     currentUpdatePriority = priority;
@@ -43,24 +98,33 @@ const HostConfig = {
 
   // ---- Job 1: keep the tree up to date. No Markdown in here. ----
 
-  createInstance(type: string, props: any): ElementNode {
-    if (
-      type === "heading" ||
-      type === "paragraph" ||
-      type === "divider" ||
-      type === "codeBlock" ||
-      type === "bold" ||
-      type === "italic" ||
-      type === "inlineCode" ||
-      type === "anchor"
-    ) {
-      const { children, ...rest } = props;
-      return { type, props: rest, children: [] };
+  // hostContext describes the place this element is being created in (its parent).
+  createInstance(
+    type: string,
+    props: any,
+    _container: HostContainer,
+    hostContext: HostContext,
+  ): ElementNode {
+    if (!BLOCKS.includes(type) && !INLINES.includes(type) && type !== "listItem") {
+      throw new Error(`Unknown type: ${type}`);
     }
-    throw new Error(`Unknown type: ${type}`);
+    if (!isElementAllowed(hostContext, type)) {
+      throw new Error(`<${type}> is not allowed here (${hostContext})`);
+    }
+    const { children, ...rest } = props;
+    return { type, props: rest, children: [] };
   },
-  createTextInstance(text: string): TextNode {
-    return { text };
+  // Same idea for text. React creates text nodes on updates too (test 36), so the
+  // check runs whenever new text appears, not only on the first render.
+  createTextInstance(
+    text: string,
+    _container: HostContainer,
+    hostContext: HostContext,
+  ): TextNode {
+    if (!isTextAllowed(hostContext)) {
+      throw new Error(`Text "${text}" is not allowed here (${hostContext})`);
+    }
+    return { text, raw: hostContext === "raw" };
   },
   shouldSetTextContent(_type: string, _props: unknown) {
     return false;
@@ -157,7 +221,31 @@ function blockToMarkdown(node: TreeNode): string {
     }
   }
 
+  if ("type" in node && node.type === "list") {
+    content += listToLines(node).join("\n");
+  }
+
   return content;
+}
+
+// One line per item: marker + the item's inline content. A nested list inside an
+// item becomes more lines, each indented by this item's marker width ("- " = 2,
+// "1. " = 3). Recursion handles any depth: a nested list's lines already carry their
+// own indentation, and we add ours on top.
+function listToLines(list: ElementNode): string[] {
+  const lines: string[] = [];
+  list.children.forEach((item, index) => {
+    const marker = list.props.ordered ? `${index + 1}. ` : "- ";
+    const children = (item as ElementNode).children;
+    const isList = (child: TreeNode) => "type" in child && child.type === "list";
+
+    lines.push(marker + children.filter((c) => !isList(c)).map(inlineToMarkdown).join(""));
+    for (const nested of children.filter(isList)) {
+      const indent = " ".repeat(marker.length);
+      lines.push(...listToLines(nested as ElementNode).map((line) => indent + line));
+    }
+  });
+  return lines;
 }
 
 // Inline content: text, or an inline element wrapping more inline content.
@@ -171,7 +259,7 @@ function escapeMarkdown(text: string): string {
 
 function inlineToMarkdown(node: TreeNode): string {
   if ("text" in node) {
-    return escapeMarkdown(node.text);
+    return node.raw ? node.text : escapeMarkdown(node.text);
   }
   const inner = node.children.map(inlineToMarkdown).join("");
   switch (node.type) {
@@ -196,24 +284,35 @@ const reconciler = Reconciler(instrument(HostConfig as any));
 // previous tree, which React needs in order to diff instead of mounting from scratch.
 // Like ReactDOM: createRoot(node) once, then root.render(...) many times.
 // A WeakMap lets a container (and its root) be garbage-collected once it's unused.
-const roots = new WeakMap<object, OpaqueRoot>();
+// Each root also keeps the errors React reported during the last render() call.
+const roots = new WeakMap<object, { root: OpaqueRoot; errors: unknown[] }>();
 
 export function render(element: ReactNode, container: Container): void {
-  let root = roots.get(container);
-  if (!root) {
+  let entry = roots.get(container);
+  if (!entry) {
     // The caller's container only has `output`. Give it a place for the tree.
     (container as HostContainer).children = [];
-    root = createRoot(container);
-    roots.set(container, root);
+    const errors: unknown[] = [];
+    entry = { root: createRoot(container, errors), errors };
+    roots.set(container, entry);
   }
 
   // updateContainer only schedules the render for later. The sync variant queues it
   // at sync priority, and flushSyncWork runs that queued work before returning.
-  reconciler.updateContainerSync(element, root, null, null);
+  entry.errors.length = 0;
+  reconciler.updateContainerSync(element, entry.root, null, null);
   reconciler.flushSyncWork();
+
+  // React CATCHES errors thrown by components and by the host config; it never lets
+  // them escape updateContainerSync. With no error boundary, it unmounts the root and
+  // hands the error to onUncaughtError. We collected it there; rethrow it here so
+  // render() fails the way the contract says.
+  if (entry.errors.length > 0) {
+    throw entry.errors[0];
+  }
 }
 
-function createRoot(container: object): OpaqueRoot {
+function createRoot(container: object, errors: unknown[]): OpaqueRoot {
   return reconciler.createContainer(
     container,
     0,
@@ -221,8 +320,9 @@ function createRoot(container: object): OpaqueRoot {
     true,
     null,
     "#-",
+    // onUncaughtError: no error boundary caught it.
     (e) => {
-      console.error(e);
+      errors.push(e);
     },
     (e) => {
       console.error(e);
