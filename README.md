@@ -54,7 +54,7 @@ Nine renderers, ordered by complexity. Each step adds one or two new ideas on to
 Progress:
 
 - [x] 1. Plain object tree
-- [ ] 2. Markdown or HTML string
+- [x] 2. Markdown or HTML string
 - [ ] 3. Terminal
 - [ ] 4. Slack, Discord or spreadsheet output
 - [ ] 5. Canvas 2D
