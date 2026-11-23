@@ -225,7 +225,7 @@
 
     <section id="roadmap">
       <h2>Practice roadmap</h2>
-      <p>Nine renderers, ordered by complexity. Each step adds one or two new ideas on top of the previous ones, so you're never learning two hard things at once.</p>
+      <p>Nine renderers, ordered by complexity, then one drill from the other side of the contract. Each step adds one or two new ideas on top of the previous ones, so you're never learning two hard things at once.</p>
 
       <ol class="roadmap">
         <li>
@@ -272,6 +272,11 @@
           <h3>Mini react-dom</h3>
           <p>The capstone. Rebuild a small subset of react-dom, then compare each of your decisions with the real implementation.</p>
           <ul class="concepts"><li>attributes vs properties</li><li>styles</li><li>event delegation and bubbling</li><li>controlled inputs</li></ul>
+        </li>
+        <li>
+          <h3>Build your own Fiber</h3>
+          <p>Swap sides. Write a mini reconciler with fibers, a work loop, keyed diffing and <code>useState</code>, and drive drill 1's host config with it. Then compare your calls with the ones the real reconciler made.</p>
+          <ul class="concepts"><li>fiber tree</li><li><code>beginWork</code> / <code>completeWork</code></li><li>interruptible work loop</li><li>current vs work-in-progress</li><li>effect flags and commit</li></ul>
         </li>
       </ol>
     </section>
@@ -356,7 +361,7 @@
           <dt><a href="https://jser.dev/react/2022/02/08/the-diffing-algorithm-for-array-in-react">The diffing algorithm for arrays</a>, JSer</dt>
           <dd>Read just before keyed reordering in the canvas renderer.</dd>
           <dt><a href="https://pomb.us/build-your-own-react/">Build your own React</a>, Rodrigo Pombo</dt>
-          <dd>Rebuild a mini React with Fiber and hooks. The complementary path: your renderers teach the platform side, this teaches the React side.</dd>
+          <dd>Rebuild a mini React with Fiber and hooks. The complementary path: your renderers teach the platform side, this teaches the React side. The guide for roadmap step 10.</dd>
           <dt><a href="https://github.com/facebook/react/tree/main/packages">The React repository</a></dt>
           <dd>Look in <code>react-reconciler/src</code> for the work loop, <code>beginWork</code>, <code>completeWork</code> and the commit files. <code>react-noop-renderer</code> is React's own minimal test renderer, an official cousin of roadmap step 1.</dd>
         </dl>

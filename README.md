@@ -37,7 +37,7 @@ In **mutation mode** you change host instances in place, the way the DOM works. 
 
 ## Practice roadmap
 
-Nine renderers, ordered by complexity. Each step adds one or two new ideas on top of the previous ones, so you're never learning two hard things at once.
+Nine renderers, ordered by complexity, then one drill from the other side of the contract. Each step adds one or two new ideas on top of the previous ones, so you're never learning two hard things at once.
 
 | # | Renderer | What you build | New concepts |
 |---|----------|----------------|--------------|
@@ -50,6 +50,7 @@ Nine renderers, ordered by complexity. Each step adds one or two new ideas on to
 | 7 | Hardware: LEDs or an Arduino | A slow, side-effectful host. Shows why commit is separate from render. | async hosts, side effects at commit |
 | 8 | 3D with three.js | The react-three-fiber idea. | external render loop, GPU resource disposal, generic prop application, refs to host objects |
 | 9 | Mini react-dom | Rebuild a small subset of react-dom, then compare with the real one. | attributes vs properties, styles, event delegation and bubbling, controlled inputs |
+| 10 | Build your own Fiber | Swap sides: write a mini reconciler (fibers, a work loop, keyed diffing, `useState`) and drive drill 1's host config with it. Then compare it with what the real one called. | fiber tree, `beginWork`/`completeWork`, interruptible work loop, current vs work-in-progress, effect flags and commit |
 
 Progress:
 
@@ -62,6 +63,7 @@ Progress:
 - [ ] 7. Hardware
 - [ ] 8. 3D with three.js
 - [ ] 9. Mini react-dom
+- [ ] 10. Build your own Fiber
 
 ## How to work
 
@@ -118,7 +120,7 @@ For when you want to see the reconciler's side of the contract.
 
 - **[React Internals Deep Dive](https://jser.dev/)**, JSer. A thorough walkthrough of React's source: mounting, re-rendering, hooks, Suspense, bailouts and tree traversal, each with a post, a video and a debugging session. Read the overview, mount and re-render episodes before you implement updates.
 - **[The diffing algorithm for arrays](https://jser.dev/react/2022/02/08/the-diffing-algorithm-for-array-in-react)**, JSer. Read just before keyed reordering in the canvas renderer.
-- **[Build your own React](https://pomb.us/build-your-own-react/)**, Rodrigo Pombo. Rebuild a mini React with Fiber and hooks. The complementary path: your renderers teach the platform side, this teaches the React side.
+- **[Build your own React](https://pomb.us/build-your-own-react/)**, Rodrigo Pombo. Rebuild a mini React with Fiber and hooks. The complementary path: your renderers teach the platform side, this teaches the React side. The guide for roadmap step 10.
 - **[The React repository](https://github.com/facebook/react/tree/main/packages)**. Look in `react-reconciler/src` for the work loop, `beginWork`, `completeWork` and the commit files. `react-noop-renderer` is React's own minimal test renderer, an official cousin of roadmap step 1.
 
 > **Note:** APIs and links reflect React 19 and the state of these resources in October 2026. If something has moved, the React repository and the README of your installed `react-reconciler` are the places to check first.
