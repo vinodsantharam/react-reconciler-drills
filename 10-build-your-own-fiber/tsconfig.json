@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // Classic JSX: <box /> compiles to h("box", null). Every .tsx file needs an `h`
+    // in scope: your createElement, or React's when the demos run on the real reconciler.
+    "jsx": "react",
+    "jsxFactory": "h",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["vitest/globals"]
+  },
+  "include": ["src"]
+}
